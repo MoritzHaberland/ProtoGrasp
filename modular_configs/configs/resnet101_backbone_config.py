@@ -1,6 +1,7 @@
-from ml_collections import config_dict
+from ml_collections import ConfigDict
 
 def get_backbone_config():
-    config = config_dict.ConfigDict()
-
-    #Backbone 
+    backbone = ConfigDict()
+    backbone.type = 'resnet101' 
+    backbone.pretrained = True
+    return backbone
