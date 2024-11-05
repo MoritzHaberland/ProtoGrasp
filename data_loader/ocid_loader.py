@@ -1,5 +1,6 @@
 import torch
 import torchvision.io as torchvision_io
+import torchvision.transforms as transforms
 import numpy as np
 import os
 import math
@@ -13,6 +14,7 @@ IMAGE_EXT = '.png'
 TXT_FILE_EXT = '.txt'
 
 class OcidDataset(Dataset):
+
 
     def __init__(self, split_file_path, root_path, split_name, transform, number_of_angle_classes):
         super().__init__()
@@ -110,17 +112,17 @@ class OcidDataset(Dataset):
 
         # Find the index of the minimum difference
         closest_index = np.argmin(differences)
-        
+
         # Return the closest class index and its mean angle
-        return closest_index, self.angles[closest_index]
+        return closest_index
 
     def __getitem__(self, index):
         item_path = self._image_paths[index]
         img, msk, boxes_cornes = self._load_item(item_path)
 
         # Apply transformations if specified
-        if self.transform:
-            img = self.transform(img)
+        #if self.transform:
+        #    img = self.transform(img)
 
         # Convert each bounding box in `box_corners` to (x, y, w, h, theta) after any transformations
         boxes_xyxy = []
@@ -131,15 +133,27 @@ class OcidDataset(Dataset):
             angles.append(self._find_closest_index_class(a))
 
         boxes_xyxy = torch.tensor(boxes_xyxy, dtype=torch.float32)
-        angles = torch.tensor(angles, dtype=torch.int)
+        angles = torch.tensor(angles, dtype=torch.int64)
 
-        return {
-            "image": img,
-            "mask": msk,
-            "boxes_rotated_corners": boxes_cornes,
-            "boxes_unrotated": boxes_xyxy,
-            "angles": angles
-        } 
+        targets = {"boxes": boxes_xyxy,
+                   "labels": angles}
+        
+        # add normalization
+        # Definiere die Normalisierung für ResNet
+        resnet_normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                        std=[0.229, 0.224, 0.225])
+        img = img.float() / 255.0
+        img = resnet_normalize(img)
+        
+
+        return img, targets
+        #return {
+        #    "image": img,
+        #    "mask": msk,
+        #    "boxes_rotated_corners": boxes_cornes,
+        #    "boxes_unrotated": boxes_xyxy,
+        #    "angles": angles
+        #} 
 
     def __len__(self):
         """Return the total number of samples in the dataset."""

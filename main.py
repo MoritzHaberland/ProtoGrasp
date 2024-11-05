@@ -1,7 +1,7 @@
 import numpy as np
 import math
 from data_loader.ocid_loader import OcidDataset
-from modular_configs.configs.dataet_config import get_dataset_config
+from modular_configs.configs.dataset_config import get_dataset_config
 
 
 import torchvision
@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 from torchvision.transforms import functional as F
 import time
+
+angle_intervals = 360 / 18  
+angle_list = np.array([i * angle_intervals for i in range(18)])
 
 def test_load_item():
     config = get_dataset_config()
@@ -23,23 +26,20 @@ def test_load_item():
     dataset = OcidDataset(split_file_path, root_path, split_name, transform, 18)
 
     # Teste den ersten Eintrag im Dataset
-    item = dataset.__getitem__(0)
-    img = item["image"]
-    msk = item["mask"]
-    boxes = item["boxes_rotated_corners"]
-    boxes_unrotated = item["boxes_unrotated"]
-    angles = item["angles"]
+    img, targets = dataset.__getitem__(0)
+    boxes = targets["boxes"]
+    angles = targets["labels"]
 
     # Überprüfe die Dimensionen und Typen der geladenen Daten
     assert img is not None, "Bild wurde nicht geladen."
-    assert msk is not None, "Maske wurde nicht geladen."
+    #assert msk is not None, "Maske wurde nicht geladen."
     assert boxes is not None, "Bounding Boxes wurden nicht geladen."
     
     # Überprüfe die Form des Bildes (z.B. C x H x W)
     assert img.ndimension() == 3, "Bild hat nicht die erwartete Dimension (C, H, W)."
     
     # Überprüfe die Form der Maske (z.B. C x H x W oder H x W)
-    assert msk.ndimension() in [2, 3], "Maske hat nicht die erwartete Dimension (H, W) oder (C, H, W)."
+    #assert msk.ndimension() in [2, 3], "Maske hat nicht die erwartete Dimension (H, W) oder (C, H, W)."
     
     # Überprüfe die Form der Bounding Boxes (z.B. Anzahl der Kästen, 4 Punkte)
     #print(boxes.shape)
@@ -49,18 +49,17 @@ def test_load_item():
     # Optional: Drucke die geladenen Daten zur Überprüfung
     #print(f'Bild: {img.shape}, Maske: {msk.shape}, Bounding Boxes: {boxes}')
 
-    return img, boxes, msk, boxes_unrotated, angles
+    return img, boxes, angles
 
-def visualize_image(img, boxes, boxes_unrotated, angles):
-    #plt.figure(figsize=(12, 9))
+def visualize_image(img, boxes_unrotated, angles):
     plt.imshow(img.permute(1, 2, 0).cpu().numpy())  # Ändere von CxHxW zu HxWxC für die Darstellung
     # Füge ein Rechteck mit den angegebenen Eckpunkten hinzu
     # Füge ein Rechteck mit den angegebenen Eckpunkten hinzu
-    box = boxes[10]
-    points = box.numpy()
-    polygon = patches.Polygon(points, closed=True, linewidth=1, edgecolor='r', facecolor='none')
+    #box = boxes[10]
+    #points = box.numpy()
+    #polygon = patches.Polygon(points, closed=True, linewidth=1, edgecolor='r', facecolor='none')
     ax = plt.gca()
-    ax.add_patch(polygon)
+    #ax.add_patch(polygon)
     
 
     box = boxes_unrotated[10]
@@ -70,7 +69,7 @@ def visualize_image(img, boxes, boxes_unrotated, angles):
     ax.add_patch(polygon)
     
     # unrotate)
-    angle_rad = math.radians(angles[10][1])
+    angle_rad = math.radians(angle_list[angles[10]])
     rotation_matrix = np.array([[math.cos(angle_rad), -math.sin(angle_rad)],
                                  [math.sin(angle_rad), math.cos(angle_rad)]])
     
@@ -94,5 +93,5 @@ def visualize_image(img, boxes, boxes_unrotated, angles):
 
 
 # Führe den Test durch
-img, boxes, msk, boxes_unrotated, angles = test_load_item()
-visualize_image(img, boxes, boxes_unrotated, angles)
+img, boxes, angles  = test_load_item()
+visualize_image(img, boxes, angles)
